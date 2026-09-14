@@ -1,0 +1,7 @@
+[project]
+name = "pydantic-render-workflows-validation"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic-ai-harness[render] @ git+https://github.com/ojusave/pydantic-ai-harness-render-workflows.git@539b2279eec9c4c7a3b51d079ec45537d01759a6",
+]
