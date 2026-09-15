@@ -6,7 +6,7 @@ services:
     name: pydantic-render-workflows-validation
     runtime: docker
     region: oregon
-    plan: free
+    plan: starter
     healthCheckPath: /healthz
     autoDeployTrigger: commit
     envVars:
