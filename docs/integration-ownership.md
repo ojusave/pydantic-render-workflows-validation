@@ -84,7 +84,7 @@ capability, or a user's own tool.
 
 - Harness Render integration: resolve the run's model id against the process's
   own registry and report that instance on the reconstructed context. Resolve to
-  the plain model, not the workflow side's durable wrapper, so a child task's
+  the plain model, not the workflow-side model wrapper, so a child task's
   work stays in the task already running it. Leave `model` unavailable when the
   id resolves to nothing, so the restriction error still explains itself.
 - Harness shared capabilities: read `ctx.model` as normal. A capability should

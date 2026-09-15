@@ -131,7 +131,7 @@ Open `http://localhost:8000`, or call the API directly. Submitting returns
 ```bash
 curl -X POST http://localhost:8000/api/chat \
   -H 'Content-Type: application/json' \
-  -d '{"message":"What are the tradeoffs of running long-lived AI research agents as durable background tasks?"}'
+  -d '{"message":"What are the tradeoffs of running long-lived AI research agents as distributed background tasks?"}'
 ```
 
 Then poll that run. A completed payload includes the answer, the model, and

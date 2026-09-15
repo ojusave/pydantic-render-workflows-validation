@@ -36,7 +36,7 @@ async def test_researcher_dispatches_delegate_child_task() -> None:
     context = RecordingTaskContext()
 
     pending: Any = run_research.func(
-        context, "What are the tradeoffs of durable background research agents?"
+        context, "What are the tradeoffs of distributed background research agents?"
     )
     output = await pending
 

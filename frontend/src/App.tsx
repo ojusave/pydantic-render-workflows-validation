@@ -128,7 +128,7 @@ export default function App() {
       <main>
         <section className="hero">
           <p className="eyebrow">PYDANTIC AI HARNESS × RENDER WORKFLOWS</p>
-          <h1>Watch an AI researcher fan out into durable tasks</h1>
+          <h1>Watch an AI researcher fan out across Render tasks</h1>
           <p>
             Pydantic AI decides how to research your question. Its harness turns
             every model call, delegated branch, search, and source fetch into a
@@ -146,7 +146,7 @@ export default function App() {
             </p>
           </article>
           <article>
-            <p className="section-kicker">DURABLE EXECUTION</p>
+            <p className="section-kicker">MANAGED TASK EXECUTION</p>
             <h2>Render Workflows</h2>
             <p>
               Runs those operations independently with managed compute,
@@ -179,7 +179,7 @@ export default function App() {
                   rows={5}
                   value={prompt}
                   onChange={(event) => setPrompt(event.target.value)}
-                  placeholder="What are the tradeoffs of running long-lived AI research agents as durable background tasks?"
+                  placeholder="What are the tradeoffs of running long-lived AI research agents as distributed background tasks?"
                   disabled={watching || !submissionsEnabled}
                   error={Boolean(error)}
                 />

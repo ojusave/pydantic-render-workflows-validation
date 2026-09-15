@@ -92,7 +92,7 @@ export function ExecutionView({ children, state }: ExecutionViewProps) {
         </li>
         <li>
           <strong>The harness translates</strong>
-          <span>Each model or tool operation becomes a durable task.</span>
+          <span>Each model or tool operation becomes an independently retryable task.</span>
         </li>
         <li>
           <strong>Render Workflows executes</strong>
