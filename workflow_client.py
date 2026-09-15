@@ -9,7 +9,7 @@ from typing import Literal, Protocol
 
 from render import RenderAsync
 from render.client.errors import RenderError, TaskRunError
-from render.public_api.api.workflow_tasks import list_task_runs
+from render.public_api.api.workflow_tasks import list_task_runs, list_tasks
 from render.public_api.api.workflows import list_workflows
 
 logger = logging.getLogger(__name__)
@@ -62,6 +62,9 @@ class ChildRun:
 
     task_run_id: str
     task_id: str
+    task_name: str
+    parent_task_run_id: str
+    depth: int
     status: str
 
 
@@ -94,6 +97,7 @@ class RenderWorkflowRunner:
         self._api_url = os.getenv("RENDER_API_URL", "https://api.render.com")
         self._local = _env_flag("RENDER_USE_LOCAL_DEV")
         self._workflow_id: str | None = None
+        self._task_names: dict[str, str] = {}
 
     def _client(self) -> RenderAsync:
         if self._local:
@@ -189,6 +193,16 @@ class RenderWorkflowRunner:
                 limit=100,
                 **filters,
             )
+            if workflow_id and not self._task_names:
+                tasks_response = await list_tasks.asyncio_detailed(
+                    client=self._client().client.internal,
+                    workflow_id=[workflow_id],
+                    limit=100,
+                )
+                if isinstance(tasks_response.parsed, list):
+                    self._task_names = {
+                        item.task.id: item.task.name for item in tasks_response.parsed
+                    }
         except (TimeoutError, RenderError, TaskRunError):
             logger.warning(
                 "Could not list child task runs",
@@ -207,16 +221,24 @@ class RenderWorkflowRunner:
 
         children: list[ChildRun] = []
         seen: set[str] = {root_task_run_id}
-        queue = list(by_parent.get(root_task_run_id, ()))
+        queue = [(run_id, 1) for run_id in by_parent.get(root_task_run_id, ())]
         while queue:
-            run = runs[queue.pop(0)]
+            run_id, depth = queue.pop(0)
+            run = runs[run_id]
             if run.id in seen:
                 continue
             seen.add(run.id)
             children.append(
-                ChildRun(task_run_id=run.id, task_id=run.task_id, status=str(run.status))
+                ChildRun(
+                    task_run_id=run.id,
+                    task_id=run.task_id,
+                    task_name=self._task_names.get(run.task_id, run.task_id),
+                    parent_task_run_id=run.parent_task_run_id,
+                    depth=depth,
+                    status=str(run.status),
+                )
             )
-            queue.extend(by_parent.get(run.id, ()))
+            queue.extend((child_id, depth + 1) for child_id in by_parent.get(run.id, ()))
         return tuple(children)
 
 

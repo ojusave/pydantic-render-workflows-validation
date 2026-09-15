@@ -15,6 +15,7 @@ import {
 } from "render-dds";
 
 import { RunData, readRun, readStatus, startRun } from "./api";
+import { ExecutionView } from "./ExecutionView";
 import { links } from "./links";
 
 const POLL_INTERVAL_MS = 1500;
@@ -127,20 +128,39 @@ export default function App() {
       <main>
         <section className="hero">
           <p className="eyebrow">PYDANTIC AI HARNESS × RENDER WORKFLOWS</p>
-          <h1>Run the harness researcher as Workflow tasks</h1>
+          <h1>Watch an AI researcher fan out into durable tasks</h1>
           <p>
-            The parent agent can search, fetch, and delegate focused
-            sub-questions. Each model request and each research branch runs as
-            its own Render task, with its own timeout, retries, and compute.
+            Pydantic AI decides how to research your question. Its harness turns
+            every model call, delegated branch, search, and source fetch into a
+            Render Workflow task you can watch below.
           </p>
+        </section>
+
+        <section className="concept-grid" aria-label="How the integration works">
+          <article>
+            <p className="section-kicker">AGENT LOGIC</p>
+            <h2>Pydantic AI</h2>
+            <p>
+              Plans the answer, delegates focused sub-questions to researchers,
+              calls web tools, and synthesizes their findings.
+            </p>
+          </article>
+          <article>
+            <p className="section-kicker">DURABLE EXECUTION</p>
+            <h2>Render Workflows</h2>
+            <p>
+              Runs those operations independently with managed compute,
+              timeouts, retries, and an observable task history.
+            </p>
+          </article>
         </section>
 
         <Card className="prompt-card">
           <CardHeader>
             <CardTitle>Ask a research question</CardTitle>
             <CardDescription>
-              Submitting returns a task run ID immediately. Polling lists the
-              child tasks Render spawned for this run.
+              Ask something broad enough to split into branches. The execution
+              view shows how Pydantic AI's decisions become Render tasks.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -182,17 +202,7 @@ export default function App() {
                   {runId && <p className="run-id">Task run: {runId}</p>}
                 </Alert>
               )}
-              {children.length > 0 && (
-                <ul className="child-runs">
-                  {children.map((child) => (
-                    <li key={child.task_run_id}>
-                      <span className="child-status">{child.status}</span>
-                      <code>{child.task_id}</code>
-                      <span className="run-id">{child.task_run_id}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {run && <ExecutionView children={children} state={run.state} />}
               {run?.state === "completed" && (
                 <Alert variant="success" title="Research response">
                   <p className="response">{run.response}</p>

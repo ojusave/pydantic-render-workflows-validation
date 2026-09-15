@@ -70,7 +70,14 @@ def test_run_reports_in_flight_state() -> None:
         RunProgress(
             state="running",
             children=(
-                ChildRun(task_run_id="child-1", task_id="tsk-1", status="running"),
+                ChildRun(
+                    task_run_id="child-1",
+                    task_id="tsk-1",
+                    task_name="researcher__model.request",
+                    parent_task_run_id="run-123",
+                    depth=1,
+                    status="running",
+                ),
             ),
         ),
     )
@@ -90,6 +97,9 @@ def test_run_reports_in_flight_state() -> None:
             {
                 "task_run_id": "child-1",
                 "task_id": "tsk-1",
+                "task_name": "researcher__model.request",
+                "parent_task_run_id": "run-123",
+                "depth": 1,
                 "status": "running",
             }
         ],

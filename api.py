@@ -34,6 +34,9 @@ class StartData(BaseModel):
 class ChildRunData(BaseModel):
     task_run_id: str
     task_id: str
+    task_name: str
+    parent_task_run_id: str
+    depth: int
     status: str
 
 
@@ -84,6 +87,9 @@ def _child_payload(children: tuple[ChildRun, ...]) -> list[ChildRunData]:
         ChildRunData(
             task_run_id=child.task_run_id,
             task_id=child.task_id,
+            task_name=child.task_name,
+            parent_task_run_id=child.parent_task_run_id,
+            depth=child.depth,
             status=child.status,
         )
         for child in children

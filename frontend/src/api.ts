@@ -7,6 +7,9 @@ export interface StartData {
 export interface ChildRun {
   task_run_id: string;
   task_id: string;
+  task_name: string;
+  parent_task_run_id: string;
+  depth: number;
   status: string;
 }
 
