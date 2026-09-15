@@ -59,8 +59,8 @@ MODEL_OPTIONS = Options(
     timeout_seconds=120,
     plan="starter",
 )
-# Render fixes tool-task Options at bind time. One tool plan covers
-# delegate_task plus local search/fetch; do not vary them per call.
+# Render fixes tool-task Options at bind time. One tool plan covers the local
+# search/fetch tools on both agents; do not vary them per call.
 TOOL_OPTIONS = Options(
     retry=Retry(max_retries=1, wait_duration_ms=5_000),
     timeout_seconds=300,
@@ -76,6 +76,17 @@ render_workflows = RenderWorkflows(
     tool_options=TOOL_OPTIONS,
 )
 
+# The delegate carries its own capability on the same app, so its model
+# requests and web tools run as Render tasks instead of inside whichever
+# process called `delegate_task`. The name sets the task prefix, which has to
+# differ from the parent's because both agents are called "researcher".
+sub_render_workflows = RenderWorkflows(
+    app,
+    name="sub_researcher",
+    model_options=MODEL_OPTIONS,
+    tool_options=TOOL_OPTIONS,
+)
+
 sub_researcher = SubAgent(
     Agent(
         MODEL,
@@ -86,9 +97,10 @@ sub_researcher = SubAgent(
         # native=False keeps DuckDuckGo/markdownify tools; TestModel cannot
         # take provider-native search/fetch.
         capabilities=[
-            WebSearch(local=True, native=False),
-            WebFetch(local=True, native=False),
+            WebSearch(local=True, native=False, id="web_search"),
+            WebFetch(local=True, native=False, id="web_fetch"),
             ToolOutputLimits(),
+            sub_render_workflows,
         ],
     ),
     timeout_seconds=240,

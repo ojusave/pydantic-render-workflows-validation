@@ -4,11 +4,11 @@ A consumer of the proposed Pydantic AI Harness `RenderWorkflows` capability,
 built from the written-out [research agent
 example](https://github.com/ojusave/pydantic-ai-harness-render-workflows/blob/43a44b405e61239b72fd220717ef85d3acab0885/examples/research_agent.py).
 Submit a question from the DDS interface. The parent agent can search, fetch,
-and delegate focused sub-questions. Each model request and each `delegate_task`
-runs as its own Render task.
+and delegate focused sub-questions. Both agents carry `RenderWorkflows`, so
+their model requests and web tools each run as their own Render task.
 
 The Harness integration is pinned to commit
-[`43a44b4`](https://github.com/ojusave/pydantic-ai-harness-render-workflows/commit/43a44b405e61239b72fd220717ef85d3acab0885)
+[`4e3f4da`](https://github.com/ojusave/pydantic-ai-harness-render-workflows/commit/4e3f4da9cb87489e489e70bd1b00df7ec0fd2b21)
 until it is available in an upstream release.
 [`docs/integration-ownership.md`](docs/integration-ownership.md) records which of
 the three codebases owns each rough edge this sample works around, and what has
@@ -18,8 +18,10 @@ to be true before the workarounds come out.
 
 - `app.py` duplicates the harness researcher graph and registers `run_research`
   at module load.
-- `RenderWorkflows` is attached to the parent only. Sub-agent search and fetch
-  stay inside each `delegate_task` process.
+- `RenderWorkflows` is attached to both agents against the same app, under the
+  `researcher` and `sub_researcher` task prefixes. The `delegate_task` call
+  itself stays inline, because `SubAgents` leaves its toolset unnamed and
+  Render needs a stable id to register a task definition.
 - `api.py` starts `run_research` and polls it. Submitting returns a task run ID
   immediately, so a long research run can outlive the request that started it.
 - Polling also lists child runs under that root ID, so the UI can show research
@@ -159,9 +161,9 @@ pnpm --dir frontend build
 
 - REST calls to start or poll a run allow 30 seconds. The research task itself
   allows 30 minutes.
-- Parent model requests run on the `starter` plan. Tool tasks, including
-  `delegate_task` and local search/fetch, use `standard`. Render fixes those
-  Options when the agent is bound, so they cannot differ per tool.
+- Model requests on both agents run on the `starter` plan. Tool tasks, the
+  local search and fetch calls, use `standard`. Render fixes those Options when
+  each agent is bound, so they cannot differ per tool.
 - `WORKFLOWS_ENABLED=false` disables submissions without taking down the UI or
   health endpoint.
 - Child-run lookups page the task-run and task-definition endpoints to

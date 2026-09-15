@@ -54,4 +54,6 @@ async def test_researcher_dispatches_delegate_child_task() -> None:
     assert isinstance(output["answer"], str)
     assert output["model"] == "pydantic-ai TestModel"
     assert "researcher__model.request" in context.task_names
-    assert any("sub_agents.call_tool" in name for name in context.task_names)
+    # The delegation tool runs inline, but the delegate's own work does not.
+    assert "sub_researcher__model.request" in context.task_names
+    assert not [name for name in context.task_names if "sub_agents" in name]
