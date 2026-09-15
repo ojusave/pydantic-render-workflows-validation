@@ -1167,8 +1167,8 @@ wheels = [
 
 [[package]]
 name = "pydantic-ai-harness"
-version = "0.31.1.dev2+4ce2364"
-source = { git = "https://github.com/ojusave/pydantic-ai-harness-render-workflows.git?rev=4ce2364b5274241f51ab2cf94fcaed2cac370293#4ce2364b5274241f51ab2cf94fcaed2cac370293" }
+version = "0.31.1.dev3+6676189"
+source = { git = "https://github.com/ojusave/pydantic-ai-harness-render-workflows.git?rev=667618958e8d1c0e3500f873101ffc7c291327e5#667618958e8d1c0e3500f873101ffc7c291327e5" }
 dependencies = [
     { name = "genai-prices" },
     { name = "httpx" },
@@ -1323,7 +1323,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.116.0" },
-    { name = "pydantic-ai-harness", extras = ["render"], git = "https://github.com/ojusave/pydantic-ai-harness-render-workflows.git?rev=4ce2364b5274241f51ab2cf94fcaed2cac370293" },
+    { name = "pydantic-ai-harness", extras = ["render"], git = "https://github.com/ojusave/pydantic-ai-harness-render-workflows.git?rev=667618958e8d1c0e3500f873101ffc7c291327e5" },
     { name = "pydantic-ai-slim", extras = ["openai", "duckduckgo", "web-fetch"], specifier = ">=2.40.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.35.0" },
 ]
