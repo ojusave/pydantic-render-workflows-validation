@@ -5,14 +5,33 @@ services:
   - type: web
     name: pydantic-render-workflows-validation
     runtime: docker
+    region: oregon
     plan: free
     healthCheckPath: /healthz
     autoDeployTrigger: commit
     envVars:
       - key: RENDER_API_KEY
         sync: false
-      - key: WORKFLOW_TASK
-        value: pydantic-render-workflows-validation/run_research
+      - key: WORKFLOW_SLUG
+        fromService:
+          name: pydantic-render-workflows-researcher
+          type: workflow
+          property: slug
       - key: WORKFLOWS_ENABLED
         value: "false"
         previewValue: "false"
+
+  - type: workflow
+    name: pydantic-render-workflows-researcher
+    runtime: python
+    region: oregon
+    # Workflows do not inherit the Blueprint's own repo the way services do.
+    repo: https://github.com/ojusave/pydantic-render-workflows-validation
+    autoDeployTrigger: commit
+    buildCommand: pip install uv && uv sync --frozen
+    startCommand: .venv/bin/python app.py
+    envVars:
+      - key: PYDANTIC_AI_MODEL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

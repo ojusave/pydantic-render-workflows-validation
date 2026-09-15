@@ -28,10 +28,23 @@ _IN_FLIGHT = frozenset({"pending", "running", "paused"})
 _SUCCEEDED = frozenset({"completed", "succeeded"})
 _LOCAL_DEV_VALUES = frozenset({"1", "t", "true"})
 _API_TIMEOUT_SECONDS = 30
+_TASK_NAME = "run_research"
 
 
 def _env_flag(name: str, default: str = "false") -> bool:
     return os.getenv(name, default).lower() in _LOCAL_DEV_VALUES
+
+
+def _resolve_task() -> str:
+    """Name the research task, preferring the Blueprint-supplied Workflow slug.
+
+    The local task server registers bare task names, so the slug is optional.
+    """
+    explicit = os.getenv("WORKFLOW_TASK")
+    if explicit:
+        return explicit
+    slug = os.getenv("WORKFLOW_SLUG")
+    return f"{slug}/{_TASK_NAME}" if slug else _TASK_NAME
 
 
 @dataclass(frozen=True)
@@ -74,10 +87,7 @@ class RenderWorkflowRunner:
     """Start and poll the research task through Render's asynchronous client."""
 
     def __init__(self) -> None:
-        self._task = os.getenv(
-            "WORKFLOW_TASK",
-            "pydantic-render-workflows-validation/run_research",
-        )
+        self._task = _resolve_task()
         self._enabled = os.getenv("WORKFLOWS_ENABLED", "true").lower() == "true"
         self._api_key = os.getenv("RENDER_API_KEY")
         self._api_url = os.getenv("RENDER_API_URL", "https://api.render.com")
@@ -148,8 +158,9 @@ class RenderWorkflowRunner:
     async def _child_runs(self, root_task_run_id: str) -> tuple[ChildRun, ...]:
         """List child task runs for a research root. Empty if the list call fails."""
         try:
+            client = self._client()
             response = await list_task_runs.asyncio_detailed(
-                client=self._client().internal,
+                client=client.client.internal,
                 limit=50,
                 root_task_run_id=[root_task_run_id],
             )

@@ -27,46 +27,46 @@ Key Value, or a background worker.
 
 ## Deploy on Render
 
-Render Blueprints do not yet support Workflow services. Create the Workflow
-first, then deploy the web service from `render.yaml`.
+Create a Blueprint from this repository. `render.yaml` defines both resources:
+the Docker web service that bundles the React interface with FastAPI, and the
+Python Workflow that runs the researcher.
 
-### 1. Create the Workflow
+Blueprints accept `type: workflow` as of Render's September 2026 release. Verify
+against your own CLI before relying on it, since the published Blueprint
+reference still lists Workflows as unsupported:
 
-In the Render Dashboard, select **New > Workflow** and connect this repository.
+```bash
+render blueprints validate render.yaml
+```
 
-| Setting | Value |
-| --- | --- |
-| Name | `pydantic-render-workflows-validation` |
-| Runtime | Python 3 |
-| Build command | `uv sync --frozen` |
-| Start command | `uv run python app.py` |
+The web service reads the Workflow slug through `fromService`, so nothing
+hardcodes the task path:
 
-Set these Workflow environment variables before enabling the UI:
+```yaml
+- key: WORKFLOW_SLUG
+  fromService:
+    name: pydantic-render-workflows-researcher
+    type: workflow
+    property: slug
+```
 
-| Variable | Required | Purpose |
+Render prompts for the `sync: false` variables on the first sync:
+
+| Variable | Service | Purpose |
 | --- | --- | --- |
-| `PYDANTIC_AI_MODEL` | Yes for real answers | Pydantic AI model string, for example `openai:gpt-5-mini` |
-| `OPENAI_API_KEY` | Only with an `openai:` model | Provider credential |
+| `RENDER_API_KEY` | Web | Starts and polls Workflow task runs |
+| `PYDANTIC_AI_MODEL` | Workflow | Model string, for example `openai:gpt-5-mini` |
+| `OPENAI_API_KEY` | Workflow | Provider credential for an `openai:` model |
 
 Without `PYDANTIC_AI_MODEL` the Workflow uses Pydantic AI's `TestModel` for
 keyless tests. TestModel echoes tool results and cannot research the web.
 
-After the first deploy, confirm the Dashboard lists `run_research`,
-`researcher__model.request`, and the generated function-tool tasks.
-
-### 2. Deploy the web service
-
-Create a Blueprint from this repository. `render.yaml` builds the React
-interface and FastAPI service into one Docker image, binds to Render's `$PORT`,
-and configures `/healthz`.
-
-Set `RENDER_API_KEY` to a Render API key that can start Workflow tasks. If you
-changed the Workflow name, update `WORKFLOW_TASK` to
-`<workflow-slug>/run_research`.
-
 `WORKFLOWS_ENABLED` defaults to `false` so a public deploy does not spend model
 or Workflow credits until you turn it on after the provider key is in place.
-Blueprint preview environments stay disabled.
+Preview environments inherit that `false`.
+
+After the first deploy, confirm the Dashboard lists `run_research`,
+`researcher__model.request`, and the generated function-tool tasks.
 
 ## Configuration
 
@@ -75,7 +75,8 @@ Blueprint preview environments stay disabled.
 | `RENDER_API_KEY` | Web | None | Authenticates Workflow API requests |
 | `RENDER_API_URL` | Web | `https://api.render.com` | Override for a custom API host |
 | `RENDER_USE_LOCAL_DEV` | Web | unset | Point the SDK at the local task server |
-| `WORKFLOW_TASK` | Web | `pydantic-render-workflows-validation/run_research` | Registered task slug |
+| `WORKFLOW_SLUG` | Web | unset | Workflow slug, set by the Blueprint via `fromService` |
+| `WORKFLOW_TASK` | Web | `<WORKFLOW_SLUG>/run_research`, or `run_research` | Overrides the resolved task path |
 | `WORKFLOWS_ENABLED` | Web | `true` in code, `false` in the Blueprint | Kill switch for new submissions |
 | `PYDANTIC_AI_MODEL` | Workflow | `TestModel` | Real provider string when set |
 | `OPENAI_API_KEY` | Workflow | None | Provider credential for an `openai:` model |
