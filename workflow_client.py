@@ -10,6 +10,7 @@ from typing import Literal, Protocol
 from render import RenderAsync
 from render.client.errors import RenderError, TaskRunError
 from render.public_api.api.workflow_tasks import list_task_runs
+from render.public_api.api.workflows import list_workflows
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,7 @@ class RenderWorkflowRunner:
         self._api_key = os.getenv("RENDER_API_KEY")
         self._api_url = os.getenv("RENDER_API_URL", "https://api.render.com")
         self._local = _env_flag("RENDER_USE_LOCAL_DEV")
+        self._workflow_id: str | None = None
 
     def _client(self) -> RenderAsync:
         if self._local:
@@ -155,14 +157,37 @@ class RenderWorkflowRunner:
             children=children,
         )
 
+    async def _resolve_workflow_id(self) -> str | None:
+        """Look up the Workflow id behind WORKFLOW_SLUG, once per process."""
+        if self._workflow_id:
+            return self._workflow_id
+
+        slug = os.getenv("WORKFLOW_SLUG")
+        if not slug:
+            return None
+
+        response = await list_workflows.asyncio_detailed(
+            client=self._client().client.internal, name=[slug], limit=1
+        )
+        parsed = response.parsed
+        if isinstance(parsed, list) and parsed:
+            self._workflow_id = parsed[0].workflow.id
+        return self._workflow_id
+
     async def _child_runs(self, root_task_run_id: str) -> tuple[ChildRun, ...]:
-        """List child task runs for a research root. Empty if the list call fails."""
+        """List the runs a research root spawned. Empty if the list call fails.
+
+        Render links spawned runs through parentTaskRunId and leaves
+        rootTaskRunId empty, so walk the parent links instead of filtering on
+        the root. Sub-agent delegation nests, so descendants count too.
+        """
         try:
-            client = self._client()
+            workflow_id = await self._resolve_workflow_id()
+            filters = {"workflow_id": [workflow_id]} if workflow_id else {}
             response = await list_task_runs.asyncio_detailed(
-                client=client.client.internal,
-                limit=50,
-                root_task_run_id=[root_task_run_id],
+                client=self._client().client.internal,
+                limit=100,
+                **filters,
             )
         except (TimeoutError, RenderError, TaskRunError):
             logger.warning(
@@ -175,14 +200,23 @@ class RenderWorkflowRunner:
         if not isinstance(parsed, list):
             return ()
 
+        runs = {item.task_run.id: item.task_run for item in parsed}
+        by_parent: dict[str, list[str]] = {}
+        for run in runs.values():
+            by_parent.setdefault(run.parent_task_run_id, []).append(run.id)
+
         children: list[ChildRun] = []
-        for item in parsed:
-            run = item.task_run
-            if run.id == root_task_run_id:
+        seen: set[str] = {root_task_run_id}
+        queue = list(by_parent.get(root_task_run_id, ()))
+        while queue:
+            run = runs[queue.pop(0)]
+            if run.id in seen:
                 continue
+            seen.add(run.id)
             children.append(
                 ChildRun(task_run_id=run.id, task_id=run.task_id, status=str(run.status))
             )
+            queue.extend(by_parent.get(run.id, ()))
         return tuple(children)
 
 
