@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.116.0",
-    "pydantic-ai-harness[render] @ git+https://github.com/ojusave/pydantic-ai-harness-render-workflows.git@539b2279eec9c4c7a3b51d079ec45537d01759a6",
+    "pydantic-ai-harness[render] @ git+https://github.com/ojusave/pydantic-ai-harness-render-workflows.git@4ce2364b5274241f51ab2cf94fcaed2cac370293",
     "pydantic-ai-slim[openai,duckduckgo,web-fetch]>=2.40.0",
     "uvicorn[standard]>=0.35.0",
 ]

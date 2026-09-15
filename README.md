@@ -2,14 +2,17 @@
 
 A consumer of the proposed Pydantic AI Harness `RenderWorkflows` capability,
 built from the written-out [research agent
-example](https://github.com/ojusave/pydantic-ai-harness-render-workflows/blob/539b2279eec9c4c7a3b51d079ec45537d01759a6/examples/research_agent.py).
+example](https://github.com/ojusave/pydantic-ai-harness-render-workflows/blob/4ce2364b5274241f51ab2cf94fcaed2cac370293/examples/research_agent.py).
 Submit a question from the DDS interface. The parent agent can search, fetch,
 and delegate focused sub-questions. Each model request and each `delegate_task`
 runs as its own Render task.
 
 The Harness integration is pinned to commit
-[`539b2279`](https://github.com/ojusave/pydantic-ai-harness-render-workflows/commit/539b2279eec9c4c7a3b51d079ec45537d01759a6)
+[`4ce2364`](https://github.com/ojusave/pydantic-ai-harness-render-workflows/commit/4ce2364b5274241f51ab2cf94fcaed2cac370293)
 until it is available in an upstream release.
+[`docs/integration-ownership.md`](docs/integration-ownership.md) records which of
+the three codebases owns each rough edge this sample works around, and what has
+to be true before the workarounds come out.
 
 ## How it works
 
@@ -161,5 +164,9 @@ pnpm --dir frontend build
   Options when the agent is bound, so they cannot differ per tool.
 - `WORKFLOWS_ENABLED=false` disables submissions without taking down the UI or
   health endpoint.
+- Child-run lookups page the task-run and task-definition endpoints to
+  exhaustion, so a busy Workflow does not silently truncate the branches shown
+  for a run. Pagination stops on a short page, a repeated cursor, or a fixed
+  page budget.
 - Render Workflows provides task logs, retry history, and run status in the
   Dashboard.

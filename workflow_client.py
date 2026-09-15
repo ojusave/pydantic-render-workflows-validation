@@ -3,9 +3,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 from render import RenderAsync
 from render.client.errors import RenderError, TaskRunError
@@ -30,10 +31,45 @@ _SUCCEEDED = frozenset({"completed", "succeeded"})
 _LOCAL_DEV_VALUES = frozenset({"1", "t", "true"})
 _API_TIMEOUT_SECONDS = 30
 _TASK_NAME = "run_research"
+_PAGE_SIZE = 100
+_MAX_PAGES = 50
 
 
 def _env_flag(name: str, default: str = "false") -> bool:
     return os.getenv(name, default).lower() in _LOCAL_DEV_VALUES
+
+
+async def _list_all(endpoint: Callable[..., Awaitable[Any]], **filters: Any) -> list[Any]:
+    """Collect every page from a cursor-paginated Render list endpoint.
+
+    Generated list endpoints return one page of `*WithCursor` items. Follow the
+    last item's cursor until a short page arrives, the cursor repeats, or the
+    page budget is spent. A repeated cursor would otherwise loop forever.
+    """
+    items: list[Any] = []
+    seen_cursors: set[str] = set()
+    cursor: str | None = None
+
+    for _ in range(_MAX_PAGES):
+        page_filters = {**filters, "cursor": cursor} if cursor else filters
+        response = await endpoint(limit=_PAGE_SIZE, **page_filters)
+
+        page = response.parsed
+        if not isinstance(page, list) or not page:
+            return items
+
+        items.extend(page)
+        if len(page) < _PAGE_SIZE:
+            return items
+
+        cursor = page[-1].cursor
+        if cursor in seen_cursors:
+            logger.warning("Stopped paginating on a repeated cursor", extra={"cursor": cursor})
+            return items
+        seen_cursors.add(cursor)
+
+    logger.warning("Stopped paginating at the page budget", extra={"max_pages": _MAX_PAGES})
+    return items
 
 
 def _resolve_task() -> str:
@@ -187,22 +223,17 @@ class RenderWorkflowRunner:
         """
         try:
             workflow_id = await self._resolve_workflow_id()
-            filters = {"workflow_id": [workflow_id]} if workflow_id else {}
-            response = await list_task_runs.asyncio_detailed(
-                client=self._client().client.internal,
-                limit=100,
-                **filters,
-            )
-            if workflow_id and not self._task_names:
-                tasks_response = await list_tasks.asyncio_detailed(
-                    client=self._client().client.internal,
-                    workflow_id=[workflow_id],
-                    limit=100,
+            client = self._client().client.internal
+            filters: dict[str, Any] = {"workflow_id": [workflow_id]} if workflow_id else {}
+            items = await _list_all(list_task_runs.asyncio_detailed, client=client, **filters)
+            if not self._task_names:
+                task_filters = {"workflow_id": [workflow_id]} if workflow_id else {}
+                tasks = await _list_all(
+                    list_tasks.asyncio_detailed,
+                    client=client,
+                    **task_filters,
                 )
-                if isinstance(tasks_response.parsed, list):
-                    self._task_names = {
-                        item.task.id: item.task.name for item in tasks_response.parsed
-                    }
+                self._task_names = {item.task.id: item.task.name for item in tasks}
         except (TimeoutError, RenderError, TaskRunError):
             logger.warning(
                 "Could not list child task runs",
@@ -210,11 +241,7 @@ class RenderWorkflowRunner:
             )
             return ()
 
-        parsed = response.parsed
-        if not isinstance(parsed, list):
-            return ()
-
-        runs = {item.task_run.id: item.task_run for item in parsed}
+        runs = {item.task_run.id: item.task_run for item in items}
         by_parent: dict[str, list[str]] = {}
         for run in runs.values():
             by_parent.setdefault(run.parent_task_run_id, []).append(run.id)
