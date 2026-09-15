@@ -6,6 +6,7 @@ these tests assert exactly which cursors the client asked for.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
@@ -54,9 +55,12 @@ class Endpoint:
     def __init__(self, *pages: list[Any]) -> None:
         self.pages = list(pages) or [[]]
         self.cursors: list[str | None] = []
+        self.root_filters: list[list[str] | None] = []
 
     async def __call__(self, **kwargs: Any) -> SimpleNamespace:
         self.cursors.append(kwargs.get("cursor"))
+        if kwargs.get("cursor") is None:
+            self.root_filters.append(kwargs.get("root_task_run_id"))
         index = min(len(self.cursors) - 1, len(self.pages) - 1)
         return SimpleNamespace(parsed=self.pages[index])
 
@@ -215,6 +219,72 @@ async def test_a_repeated_cursor_stops_pagination(monkeypatch: pytest.MonkeyPatc
 
     assert harness.runs.cursors == [None, f"cur-fill-{PAGE_SIZE - 1}"]
     assert len(children) == PAGE_SIZE
+
+
+async def test_the_root_filter_scopes_the_query_to_one_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Listing the whole workflow on every poll grows with history, not with the run.
+    harness = build(
+        monkeypatch,
+        Endpoint(run_page([FakeRun(id="child-1", parent_task_run_id=ROOT)])),
+    )
+
+    children = await harness.runner._child_runs(ROOT)
+
+    assert [child.task_run_id for child in children] == ["child-1"]
+    assert harness.runs.call_count == 1
+    assert harness.runs.root_filters == [[ROOT]]
+
+
+async def test_an_unpopulated_root_falls_back_to_the_parent_walk(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    harness = build(
+        monkeypatch,
+        Endpoint([], run_page([FakeRun(id="child-1", parent_task_run_id=ROOT)])),
+    )
+
+    children = await harness.runner._child_runs(ROOT)
+
+    assert [child.task_run_id for child in children] == ["child-1"]
+    assert harness.runs.root_filters == [[ROOT], None]
+
+
+async def _completed_run(task_run_id: str) -> SimpleNamespace:
+    return SimpleNamespace(status="completed", results=[{"answer": "an answer"}])
+
+
+async def test_a_slow_lineage_lookup_drops_children_not_the_poll(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The answer is the product; lineage is decoration and must not fail the poll.
+    async def never_returns(**_: Any) -> SimpleNamespace:
+        await asyncio.sleep(workflow_client._CHILD_TIMEOUT_SECONDS + 1)
+        raise AssertionError("should have timed out")
+
+    harness = build(
+        monkeypatch, Endpoint(run_page([FakeRun(id="child-1", parent_task_run_id=ROOT)]))
+    )
+    monkeypatch.setattr(workflow_client.list_task_runs, "asyncio_detailed", never_returns)
+    monkeypatch.setattr(workflow_client, "_CHILD_TIMEOUT_SECONDS", 0.01)
+    monkeypatch.setattr(
+        RenderWorkflowRunner,
+        "_client",
+        lambda self: SimpleNamespace(
+            client=SimpleNamespace(internal=object()),
+            workflows=SimpleNamespace(
+                get_task_run=_completed_run,
+            ),
+        ),
+    )
+
+    progress = await harness.runner.progress(ROOT)
+
+    assert progress.state == "completed"
+    assert progress.response == "an answer"
+    assert progress.children == ()
+    assert progress.error_code is None
 
 
 async def test_pagination_stops_at_the_page_budget(monkeypatch: pytest.MonkeyPatch) -> None:

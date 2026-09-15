@@ -30,6 +30,7 @@ _IN_FLIGHT = frozenset({"pending", "running", "paused"})
 _SUCCEEDED = frozenset({"completed", "succeeded"})
 _LOCAL_DEV_VALUES = frozenset({"1", "t", "true"})
 _API_TIMEOUT_SECONDS = 30
+_CHILD_TIMEOUT_SECONDS = 10
 _TASK_NAME = "run_research"
 _PAGE_SIZE = 100
 _MAX_PAGES = 50
@@ -162,10 +163,11 @@ class RenderWorkflowRunner:
         try:
             async with asyncio.timeout(_API_TIMEOUT_SECONDS):
                 details = await self._client().workflows.get_task_run(task_run_id)
-                children = await self._child_runs(task_run_id)
         except (TimeoutError, RenderError, TaskRunError):
             logger.exception("Could not read workflow run", extra={"task_run_id": task_run_id})
             return RunProgress(error_code="WORKFLOW_LOOKUP_FAILED")
+
+        children = await self._child_runs(task_run_id)
 
         status = str(details.status)
         if status in _IN_FLIGHT:
@@ -215,25 +217,40 @@ class RenderWorkflowRunner:
         return self._workflow_id
 
     async def _child_runs(self, root_task_run_id: str) -> tuple[ChildRun, ...]:
-        """List the runs a research root spawned. Empty if the list call fails.
+        """List the runs a research root spawned. Empty if the lookup fails or runs long.
 
-        Render links spawned runs through parentTaskRunId and leaves
-        rootTaskRunId empty, so walk the parent links instead of filtering on
-        the root. Sub-agent delegation nests, so descendants count too.
+        Ask Render for this root's runs, which keeps the query proportional to one
+        run rather than to the whole workflow's history. rootTaskRunId has not
+        always been populated, so fall back to listing the workflow and walking
+        parentTaskRunId links. Sub-agent delegation nests, so descendants count too.
+
+        Lineage is decoration next to the run state and the answer, so it gets its
+        own budget: a slow or failing lookup drops the children rather than the poll.
         """
         try:
-            workflow_id = await self._resolve_workflow_id()
-            client = self._client().client.internal
-            filters: dict[str, Any] = {"workflow_id": [workflow_id]} if workflow_id else {}
-            items = await _list_all(list_task_runs.asyncio_detailed, client=client, **filters)
-            if not self._task_names:
-                task_filters = {"workflow_id": [workflow_id]} if workflow_id else {}
-                tasks = await _list_all(
-                    list_tasks.asyncio_detailed,
+            async with asyncio.timeout(_CHILD_TIMEOUT_SECONDS):
+                workflow_id = await self._resolve_workflow_id()
+                client = self._client().client.internal
+                scope: dict[str, Any] = {"workflow_id": [workflow_id]} if workflow_id else {}
+                items = await _list_all(
+                    list_task_runs.asyncio_detailed,
                     client=client,
-                    **task_filters,
+                    root_task_run_id=[root_task_run_id],
+                    **scope,
                 )
-                self._task_names = {item.task.id: item.task.name for item in tasks}
+                if not items:
+                    items = await _list_all(
+                        list_task_runs.asyncio_detailed,
+                        client=client,
+                        **scope,
+                    )
+                if not self._task_names:
+                    tasks = await _list_all(
+                        list_tasks.asyncio_detailed,
+                        client=client,
+                        **scope,
+                    )
+                    self._task_names = {item.task.id: item.task.name for item in tasks}
         except (TimeoutError, RenderError, TaskRunError):
             logger.warning(
                 "Could not list child task runs",
