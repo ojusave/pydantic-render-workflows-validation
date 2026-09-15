@@ -2,7 +2,7 @@ import os
 
 from pydantic_ai import Agent
 from pydantic_ai.capabilities import WebFetch, WebSearch
-from pydantic_ai.models import Model
+from pydantic_ai.models import Model, infer_model
 from pydantic_ai.models.test import TestModel
 from pydantic_ai_harness import RenderWorkflows, SubAgent, SubAgents, ToolOutputLimits
 from render import Options, Retry, TaskContext, Workflows
@@ -37,14 +37,17 @@ class DelegateTestModel(TestModel):
         return []
 
 
-def resolve_model() -> Model | str:
+def resolve_model() -> Model:
     """Use a real provider when PYDANTIC_AI_MODEL is set, otherwise TestModel.
 
     Tests and local smoke runs stay keyless. The UI is not a research product
     until a real model is configured on the Workflow.
     """
     if DEFAULT_MODEL:
-        return DEFAULT_MODEL
+        # Render child tasks rebuild this module in a separate process. Resolve
+        # the model now so the integration can register the same model instance
+        # by ID in both the parent and child process.
+        return infer_model(DEFAULT_MODEL)
     return DelegateTestModel()
 
 
