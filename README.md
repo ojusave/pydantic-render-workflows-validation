@@ -2,13 +2,13 @@
 
 A consumer of the proposed Pydantic AI Harness `RenderWorkflows` capability,
 built from the written-out [research agent
-example](https://github.com/ojusave/pydantic-ai-harness-render-workflows/blob/667618958e8d1c0e3500f873101ffc7c291327e5/examples/research_agent.py).
+example](https://github.com/ojusave/pydantic-ai-harness-render-workflows/blob/e20679c2786fe396733cf458356ba7b7a1def747/examples/research_agent.py).
 Submit a question from the DDS interface. The parent agent can search, fetch,
 and delegate focused sub-questions. Each model request and each `delegate_task`
 runs as its own Render task.
 
 The Harness integration is pinned to commit
-[`6676189`](https://github.com/ojusave/pydantic-ai-harness-render-workflows/commit/667618958e8d1c0e3500f873101ffc7c291327e5)
+[`e20679c`](https://github.com/ojusave/pydantic-ai-harness-render-workflows/commit/e20679c2786fe396733cf458356ba7b7a1def747)
 until it is available in an upstream release.
 [`docs/integration-ownership.md`](docs/integration-ownership.md) records which of
 the three codebases owns each rough edge this sample works around, and what has
