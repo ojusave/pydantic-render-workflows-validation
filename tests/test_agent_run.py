@@ -8,8 +8,11 @@ while capturing the task names Render would have run.
 import inspect
 from typing import Any, ParamSpec, TypeVar
 
+import pytest
+from pydantic_ai.models import Model
 from render.workflows import TaskContext, TaskDefinition
 
+import app as workflow_app
 from app import run_research
 
 P = ParamSpec("P")
@@ -30,6 +33,14 @@ class RecordingTaskContext(TaskContext):
         if inspect.isawaitable(result):
             return await result
         return result
+
+
+def test_configured_model_is_resolved_before_registration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(workflow_app, "DEFAULT_MODEL", "test")
+
+    assert isinstance(workflow_app.resolve_model(), Model)
 
 
 async def test_researcher_dispatches_delegate_child_task() -> None:
