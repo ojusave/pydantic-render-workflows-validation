@@ -15,8 +15,8 @@ permanent example code, and then the next consumer writes it again.
 
 | Concern | Owner | Example's role today |
 | --- | --- | --- |
-| Toolset IDs on leaf `FunctionToolset`s | Harness Render integration | Fixed by pinned harness commit `65b2bb4` |
-| Model access inside a child task | Harness Render integration | Fixed by pinned harness commit `65b2bb4` |
+| Toolset IDs on leaf `FunctionToolset`s | Harness Render integration | Fixed by pinned harness commit `43a44b4` |
+| Model access inside a child task | Harness Render integration | Fixed by pinned harness commit `43a44b4` |
 | Root and parent task-run lineage | Render platform | Parent-link BFS in `workflow_client.py` |
 | Cursor pagination over list endpoints | Example, with optional SDK helper | Owns it outright |
 | Local and deployed test coverage | Split, see below | Owns the keyless suite |
@@ -24,7 +24,7 @@ permanent example code, and then the next consumer writes it again.
 ## Handoff sequencing
 
 The example pins the harness to a git commit in `pyproject.toml` rather than a
-release. Commit `65b2bb4` keeps both fixes below in
+release. Commit `43a44b4` keeps both fixes below in
 `pydantic_ai_harness/render/`, so the pin and the removal of the `app.py`
 compatibility shims move together. Future workarounds follow the same sequence:
 publish the upstream fix, update the pin, prove it through a local Workflow
@@ -42,7 +42,7 @@ below are implemented where the requirement comes from, and `subagents` and
 Render Workflows binds one task per leaf `FunctionToolset` and needs a stable
 unique id to name it. A capability that builds its own toolset has nowhere to
 take an id from: nobody writing `capabilities=[SubAgents(...)]` ever touches the
-`FunctionToolset` underneath. Commit `65b2bb4` derives the id when
+`FunctionToolset` underneath. Commit `43a44b4` derives the id when
 `RenderWorkflows` binds, from the `id` of the capability that contributed the
 toolset, which is already unique per agent and identical in the worker process.
 
@@ -75,7 +75,7 @@ an option: it holds a provider client and credentials.
 
 It does not have to travel. The worker imports the same agent module, so the
 model is already in that process, and the capability registers the default model
-and the `models={...}` entries by id. Commit `65b2bb4` carries the run's model id
+and the `models={...}` entries by id. Commit `43a44b4` carries the run's model id
 in the projection and resolves the instance on the child side, so `ctx.model`
 answers for any reader in a child task: a delegating toolset, a summarizing
 capability, or a user's own tool.

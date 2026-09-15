@@ -26,4 +26,4 @@ line-length = 100
 target-version = "py312"
 
 [tool.uv.sources]
-pydantic-ai-harness = { git = "https://github.com/ojusave/pydantic-ai-harness-render-workflows.git", rev = "65b2bb40" }
+pydantic-ai-harness = { git = "https://github.com/ojusave/pydantic-ai-harness-render-workflows.git", rev = "43a44b40" }
