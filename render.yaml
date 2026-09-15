@@ -1,0 +1,18 @@
+previews:
+  generation: automatic
+
+services:
+  - type: web
+    name: pydantic-render-workflows-validation
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      - key: RENDER_API_KEY
+        sync: false
+      - key: WORKFLOW_TASK
+        value: pydantic-render-workflows-validation/run_research
+      - key: WORKFLOWS_ENABLED
+        value: "false"
+        previewValue: "false"
