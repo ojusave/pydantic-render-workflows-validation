@@ -179,7 +179,7 @@ export default function App() {
                   rows={5}
                   value={prompt}
                   onChange={(event) => setPrompt(event.target.value)}
-                  placeholder="Compare Render Workflows and Temporal for long-running AI research."
+                  placeholder="What are the tradeoffs of running long-lived AI research agents as durable background tasks?"
                   disabled={watching || !submissionsEnabled}
                   error={Boolean(error)}
                 />
