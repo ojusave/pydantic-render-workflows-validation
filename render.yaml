@@ -1,37 +1,51 @@
-previews:
-  generation: automatic
-
 services:
   - type: web
-    name: pydantic-render-workflows-validation
+    name: pydantic-ai-researcher-v2
+    repo: https://github.com/ojusave/pydantic-render-workflows-validation
+    branch: pydantic-ai-v2
     runtime: docker
     region: oregon
     plan: starter
     healthCheckPath: /healthz
-    autoDeployTrigger: commit
+    autoDeployTrigger: off
     envVars:
       - key: RENDER_API_KEY
         sync: false
+      - key: DEMO_PASSWORD
+        generateValue: true
       - key: WORKFLOW_SLUG
         fromService:
-          name: pydantic-render-workflows-researcher
+          name: pydantic-ai-researcher-v2-workflow
           type: workflow
           property: slug
       - key: WORKFLOWS_ENABLED
-        value: "false"
-        previewValue: "false"
+        value: "true"
 
   - type: workflow
-    name: pydantic-render-workflows-researcher
+    name: pydantic-ai-researcher-v2-workflow
     runtime: python
     region: oregon
-    # Workflows do not inherit the Blueprint's own repo the way services do.
     repo: https://github.com/ojusave/pydantic-render-workflows-validation
-    autoDeployTrigger: commit
-    buildCommand: pip install uv && uv sync --frozen
-    startCommand: .venv/bin/python app.py
+    branch: pydantic-ai-v2
+    autoDeployTrigger: off
+    buildCommand: pip install uv==0.12.1 && uv sync --frozen --no-dev
+    startCommand: .venv/bin/python hosted.py
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.13"
       - key: PYDANTIC_AI_MODEL
-        sync: false
+        value: openai:gpt-5.4-mini
       - key: OPENAI_API_KEY
         sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pydantic-ai-validation-db
+          property: connectionString
+
+databases:
+  - name: pydantic-ai-validation-db
+    region: oregon
+    plan: basic-256mb
+    diskSizeGB: 1
+    postgresMajorVersion: "17"
+    ipAllowList: []

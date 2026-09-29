@@ -41,6 +41,19 @@ def test_healthz() -> None:
     }
 
 
+def test_hosted_password_protects_submissions_and_results(monkeypatch) -> None:
+    monkeypatch.setenv("DEMO_PASSWORD", "synthetic-test-password")
+    with TestClient(api) as client:
+        assert client.get("/healthz").status_code == 200
+        assert client.get("/api/status").status_code == 401
+        assert client.post("/api/chat", json={"message": "hello"}).status_code == 401
+        assert client.get("/api/runs/run-123").status_code == 401
+        assert client.get("/api/status", auth=("ojus", "wrong")).status_code == 401
+        assert (
+            client.get("/api/status", auth=("ojus", "synthetic-test-password")).status_code == 200
+        )
+
+
 def test_status_reports_submissions_enabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

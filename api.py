@@ -1,10 +1,12 @@
 import logging
 import os
+import secrets
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBasic
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -21,10 +23,32 @@ logging.basicConfig(
     format='{"level":"%(levelname)s","logger":"%(name)s","message":"%(message)s"}',
 )
 api = FastAPI(title="Pydantic AI Researcher on Render Workflows")
+basic_auth = HTTPBasic(auto_error=False)
+
+
+@api.middleware("http")
+async def protect_demo(request: Request, call_next):
+    """Require the configured demo password, including for run-result access."""
+    password = os.getenv("DEMO_PASSWORD")
+    if password and request.url.path != "/healthz":
+        try:
+            credentials = await basic_auth(request)
+        except HTTPException:
+            credentials = None
+        if credentials is None or not (
+            secrets.compare_digest(credentials.username.encode(), b"ojus")
+            and secrets.compare_digest(credentials.password.encode(), password.encode())
+        ):
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Sign in to use this validation deployment."},
+                headers={"WWW-Authenticate": "Basic"},
+            )
+    return await call_next(request)
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(min_length=1)
+    message: str = Field(min_length=1, max_length=8000)
 
 
 class StartData(BaseModel):

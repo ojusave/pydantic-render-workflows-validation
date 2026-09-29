@@ -4,10 +4,12 @@ from pydantic_ai import Agent
 from pydantic_ai.capabilities import WebFetch, WebSearch
 from pydantic_ai.models import Model, infer_model
 from pydantic_ai.models.test import TestModel
+from pydantic_ai.usage import UsageLimits
 from pydantic_ai_harness import RenderWorkflows, SubAgent, SubAgents, ToolOutputLimits
+from pydantic_ai_harness.tool_output_limits import Band, Truncate
 from render import Options, Retry, TaskContext, Workflows
 
-# Keep these blocks in sync with pydantic-ai-harness/examples/research_agent.py.
+# Research behavior is independent of the Render task configuration below.
 INSTRUCTIONS = """\
 Search broadly before drawing conclusions.
 Read the sources that support each important claim.
@@ -57,14 +59,14 @@ MODEL_LABEL = DEFAULT_MODEL or "pydantic-ai TestModel"
 MODEL_OPTIONS = Options(
     retry=Retry(max_retries=2, wait_duration_ms=2_000, backoff_scaling=2),
     timeout_seconds=120,
-    plan="starter",
+    plan="flex",
 )
 # Render fixes tool-task Options at bind time. One tool plan covers the local
 # search/fetch tools on both agents; do not vary them per call.
 TOOL_OPTIONS = Options(
     retry=Retry(max_retries=1, wait_duration_ms=5_000),
     timeout_seconds=300,
-    plan="standard",
+    plan="flex",
 )
 
 
@@ -99,7 +101,7 @@ sub_researcher = SubAgent(
         capabilities=[
             WebSearch(local=True, native=False, id="web_search"),
             WebFetch(local=True, native=False, id="web_fetch"),
-            ToolOutputLimits(),
+            ToolOutputLimits(bands=[Band(over=12_000, action=Truncate(max_chars=12_000))]),
             sub_render_workflows,
         ],
     ),
@@ -115,17 +117,19 @@ agent = Agent(
         WebSearch(local=True, native=False, id="web_search"),
         WebFetch(local=True, native=False, id="web_fetch"),
         SubAgents(agents=[sub_researcher], agent_folders=None),
-        ToolOutputLimits(),
+        ToolOutputLimits(bands=[Band(over=12_000, action=Truncate(max_chars=12_000))]),
         render_workflows,
     ],
 )
 
 
-@render_workflows.task(name="run_research", timeout_seconds=1800, plan="standard")
+@render_workflows.task(name="run_research", timeout_seconds=1800, plan="flex")
 async def run_research(ctx: TaskContext, prompt: str) -> dict[str, str]:
     """Run one research prompt through the parent agent."""
     del ctx
-    result = await agent.run(prompt, model_settings={"timeout": 60.0})
+    result = await agent.run(
+        prompt, model_settings={"timeout": 60.0}, usage_limits=UsageLimits(request_limit=12)
+    )
     return {"answer": result.output, "model": MODEL_LABEL}
 
 

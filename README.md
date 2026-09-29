@@ -1,174 +1,66 @@
-# Harness researcher on Render Workflows
+# Pydantic AI researcher on Render Workflows
 
-A consumer of the proposed Pydantic AI Harness `RenderWorkflows` capability,
-built from the written-out [research agent
-example](https://github.com/ojusave/pydantic-ai-harness-render-workflows/blob/43a44b405e61239b72fd220717ef85d3acab0885/examples/research_agent.py).
-Submit a question from the DDS interface. The parent agent can search, fetch,
-and delegate focused sub-questions. Both agents carry `RenderWorkflows`, so
-their model requests and web tools each run as their own Render task.
+This example runs a web-research agent in the background and shows its model and tool calls as separate Render task runs. A React interface submits a question to FastAPI, which starts the research task and returns a run ID. The browser polls that ID until it can display the answer and the child-task history.
 
-The Harness integration is pinned to commit
-[`4e3f4da`](https://github.com/ojusave/pydantic-ai-harness-render-workflows/commit/4e3f4da9cb87489e489e70bd1b00df7ec0fd2b21)
-until it is available in an upstream release.
-[`docs/integration-ownership.md`](docs/integration-ownership.md) records which of
-the three codebases owns each rough edge this sample works around, and what has
-to be true before the workarounds come out.
+The `pydantic-ai-v2` branch uses the integration in the Pydantic AI monorepo. `main` retains the earlier Harness example. This is a validation build of an integration that has not been released by Pydantic.
 
-## How it works
+## Run it locally
 
-- `app.py` duplicates the harness researcher graph and registers `run_research`
-  at module load.
-- `RenderWorkflows` is attached to both agents against the same app, under the
-  `researcher` and `sub_researcher` task prefixes. The `delegate_task` call
-  itself stays inline, because `SubAgents` leaves its toolset unnamed and
-  Render needs a stable id to register a task definition.
-- `api.py` starts `run_research` and polls it. Submitting returns a task run ID
-  immediately, so a long research run can outlive the request that started it.
-- Polling also lists child runs under that root ID, so the UI can show research
-  branches without a database.
-
-The Workflow is the run system of record. This sample does not need Postgres,
-Key Value, or a background worker.
-
-## Deploy on Render
-
-Create a Blueprint from this repository. `render.yaml` defines both resources:
-the Docker web service that bundles the React interface with FastAPI, and the
-Python Workflow that runs the researcher.
-
-Blueprints accept `type: workflow` as of Render's September 2026 release. Verify
-against your own CLI before relying on it, since the published Blueprint
-reference still lists Workflows as unsupported:
+Install Python 3.12, uv, Node 22 or later, pnpm 10.32.1, and [Render CLI](https://render.com/docs/cli) 2.28 or later. Clone this branch, then install and build:
 
 ```bash
-render blueprints validate render.yaml
-```
-
-The web service reads the Workflow slug through `fromService`, so nothing
-hardcodes the task path:
-
-```yaml
-- key: WORKFLOW_SLUG
-  fromService:
-    name: pydantic-render-workflows-researcher
-    type: workflow
-    property: slug
-```
-
-Render prompts for the `sync: false` variables on the first sync:
-
-| Variable | Service | Purpose |
-| --- | --- | --- |
-| `RENDER_API_KEY` | Web | Starts and polls Workflow task runs |
-| `PYDANTIC_AI_MODEL` | Workflow | Model string, for example `openai:gpt-5-mini` |
-| `OPENAI_API_KEY` | Workflow | Provider credential for an `openai:` model |
-
-Without `PYDANTIC_AI_MODEL` the Workflow uses Pydantic AI's `TestModel` for
-keyless tests. TestModel echoes tool results and cannot research the web.
-
-`WORKFLOWS_ENABLED` defaults to `false` so a public deploy does not spend model
-or Workflow credits until you turn it on after the provider key is in place.
-Preview environments inherit that `false`.
-
-After the first deploy, confirm the Dashboard lists `run_research`,
-`researcher__model.request`, and the generated function-tool tasks.
-
-## Configuration
-
-| Variable | Service | Default | Purpose |
-| --- | --- | --- | --- |
-| `RENDER_API_KEY` | Web | None | Authenticates Workflow API requests |
-| `RENDER_API_URL` | Web | `https://api.render.com` | Override for a custom API host |
-| `RENDER_USE_LOCAL_DEV` | Web | unset | Point the SDK at the local task server |
-| `WORKFLOW_SLUG` | Web | unset | Workflow slug, set by the Blueprint via `fromService` |
-| `WORKFLOW_TASK` | Web | `<WORKFLOW_SLUG>/run_research`, or `run_research` | Overrides the resolved task path |
-| `WORKFLOWS_ENABLED` | Web | `true` in code, `false` in the Blueprint | Kill switch for new submissions |
-| `PYDANTIC_AI_MODEL` | Workflow | `TestModel` | Real provider string when set |
-| `OPENAI_API_KEY` | Workflow | None | Provider credential for an `openai:` model |
-
-## Local validation
-
-Prerequisites: Python 3.12+, `uv`, Node 22+, `pnpm`, and Render CLI 2.28+.
-
-Use CLI 2.28 or newer. Older builds of the local task server omit the `attempt`
-field from task attempts, which the Python SDK requires.
-
-Install dependencies:
-
-```bash
-uv sync
-pnpm --dir frontend install
-pnpm --dir frontend build
-```
-
-Start the local Workflow server:
-
-```bash
+git clone --branch pydantic-ai-v2 https://github.com/ojusave/pydantic-render-workflows-validation.git
+cd pydantic-render-workflows-validation
+uv sync --frozen
+corepack pnpm --dir frontend install --frozen-lockfile
+corepack pnpm --dir frontend build
 render workflows dev -- uv run python app.py
 ```
 
-It listens on port 8120 and prints the registered tasks.
-
-Point the API at that server. The local task server registers bare task names,
-so `WORKFLOW_TASK` drops the workflow slug:
+In a second terminal, start the web application:
 
 ```bash
-RENDER_USE_LOCAL_DEV=true \
-WORKFLOW_TASK=run_research \
-WORKFLOWS_ENABLED=true \
-uv run uvicorn api:api --host 127.0.0.1 --port 8000
+RENDER_USE_LOCAL_DEV=true WORKFLOW_TASK=run_research WORKFLOWS_ENABLED=true \
+  uv run uvicorn api:api --host 127.0.0.1 --port 8000
 ```
 
-`RENDER_USE_LOCAL_DEV=true` points the SDK at `http://localhost:8120` and does
-not require `RENDER_API_KEY`. Override the port with `RENDER_LOCAL_DEV_URL` if
-needed.
+Open <http://127.0.0.1:8000>. Without provider configuration, the workflow uses `TestModel` to exercise delegation and return synthetic text. To research real questions, set `PYDANTIC_AI_MODEL=openai:gpt-5.4-mini` and `OPENAI_API_KEY` in the workflow terminal before starting it.
 
-For real research answers locally, set `PYDANTIC_AI_MODEL` and the matching
-provider key in the Workflow process environment before starting
-`render workflows dev`.
+## How the integration is used
 
-Open `http://localhost:8000`, or call the API directly. Submitting returns
-`202` with a task run ID:
+[`app.py`](app.py) defines the parent researcher and a sub-agent. Each agent has its own `RenderWorkflows` capability, with distinct names on the same `Workflows` application. The `@render_workflows.task` decorator on `run_research` puts the agent loop in a root task and dispatches supported model and tool operations to child tasks. Each worker imports the agent definition and constructs its own provider client from environment variables.
 
-```bash
-curl -X POST http://localhost:8000/api/chat \
-  -H 'Content-Type: application/json' \
-  -d '{"message":"What are the tradeoffs of running long-lived AI research agents as distributed background tasks?"}'
-```
+Model requests have a two-minute task timeout and two retries; web tools have a five-minute task timeout and one retry. Both use Render's `flex` plan. Large tool results are truncated to 12,000 characters, so the example does not depend on files shared between task instances. Sub-agent delegation runs inside the parent agent loop, while the sub-agent's model and web-tool calls have their own task records.
 
-Then poll that run. A completed payload includes the answer, the model, and
-any child task runs:
+A child task can retry while its parent waits. Retrying the root starts the agent again and can repeat completed work. This example does not provide agent checkpoint recovery or exactly-once side effects. Task progress appears through polling; it is not a live stream of model tokens.
 
-```bash
-curl http://localhost:8000/api/runs/<task_run_id>
-```
+## Deploy a separate hosted version
 
-```bash
-render workflows tasks runs list --local
-```
+[`render.yaml`](render.yaml) describes a web service, a workflow, and a small PostgreSQL database in the same region. Use it to create a new Blueprint, or create equivalent resources with the Render CLI and API. The workflow starts `hosted.py`, which registers the researcher and the synthetic validation tasks below. The web service builds with the included Dockerfile.
 
-## Tests
+Supply `OPENAI_API_KEY` on the workflow and `RENDER_API_KEY` on the web service. The Blueprint connects `DATABASE_URL` and `WORKFLOW_SLUG` and generates `DEMO_PASSWORD`. Sign in to the web interface with username `ojus` and the password from the web service's Environment page. The password protects submissions and run results; `/healthz` remains available to Render's health check.
 
-Tests use fake Workflow runners or `TestModel` and make no provider API calls:
+`WORKFLOWS_ENABLED=false` disables new submissions. Auto-deploy is off for this validation version, so release an explicitly tested commit when updating it. The older deployment can keep using `main` independently.
+
+The database stores synthetic Memory and retry-test records. Research prompts and results travel through Render and the configured model provider; web research also calls external sites. Use non-sensitive prompts for validation. Workflow API access is trusted, including access to generated operation tasks.
+
+## Test the integration
 
 ```bash
 uv run pytest
 uv run ruff check .
-pnpm --dir frontend build
+corepack pnpm --dir frontend build
+render blueprints validate render.yaml
 ```
 
-## Operational behavior
+The ordinary test suite needs no provider key. Hosted validation uses real Render task execution and a real model for the research example. [`hosted.py`](hosted.py) adds deterministic probes so the infrastructure checks do not depend on model choices:
 
-- REST calls to start or poll a run allow 30 seconds. The research task itself
-  allows 30 minutes.
-- Model requests on both agents run on the `starter` plan. Tool tasks, the
-  local search and fetch calls, use `standard`. Render fixes those Options when
-  each agent is bound, so they cannot differ per tool.
-- `WORKFLOWS_ENABLED=false` disables submissions without taking down the UI or
-  health endpoint.
-- Child-run lookups page the task-run and task-definition endpoints to
-  exhaustion, so a busy Workflow does not silently truncate the branches shown
-  for a run. Pagination stops on a short page, a repeated cursor, or a fixed
-  page budget.
-- Render Workflows provides task logs, retry history, and run status in the
-  Dashboard.
+| Task | What it checks |
+| --- | --- |
+| `run_validation`, case `retry` | A tool fails once and succeeds on its registered retry while the root stays on its first attempt. |
+| `run_validation`, case `interrupt` | The root process exits after a completed tool call, then retries and repeats that work. |
+| `run_validation`, case `cancel` | A long-running child allows native root cancellation to be checked. |
+| `run_memory` | Separate runs write and read shared PostgreSQL Memory with per-run character limits. |
+| `cleanup_validation` | Removes one probe's Memory files and attempt counters by its UUID. |
+
+All Pydantic packages are pinned to the same Git revision in `pyproject.toml` and `uv.lock`. The validation revision combines the Render adapter with the separately reviewed Memory fix; neither upstream PR needs to include this example's deployment code. See [integration ownership](docs/integration-ownership.md) for the boundaries and [Render's Python SDK reference](https://render.com/docs/workflows-sdk-python) for task configuration.
