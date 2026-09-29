@@ -73,3 +73,5 @@ uv run python verify_hosted.py
 The script checks actual task attempts and descendant states, then removes its synthetic Memory files and attempt counters. Render retains task history, and Memory retains its operation receipts. The script prints run IDs and results for review.
 
 All Pydantic packages are pinned to the same Git revision in `pyproject.toml` and `uv.lock`. The validation revision combines the Render adapter with the separately reviewed Memory fix; neither upstream PR needs to include this example's deployment code. See [integration ownership](docs/integration-ownership.md) for the boundaries and [Render's Python SDK reference](https://render.com/docs/workflows-sdk-python) for task configuration.
+
+[Hosted validation results](docs/hosted-validation.md) record the tested revisions, task run IDs, and remaining verification.
