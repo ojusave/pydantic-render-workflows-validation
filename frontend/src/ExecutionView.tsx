@@ -68,7 +68,9 @@ export function ExecutionView({ children, state }: ExecutionViewProps) {
       name.includes(".summarize")
     );
   });
-  const branches = count(children, "sub_agents.call_tool");
+  const subAgentCalls = children.filter((child) =>
+    child.task_name.startsWith("sub_researcher__") && child.task_name.endsWith("__model.request"),
+  ).length;
   const searches = count(children, "web_search.call_tool");
   const fetches = count(children, "web_fetch.call_tool");
   const modelCalls = children.filter((child) =>
@@ -92,7 +94,7 @@ export function ExecutionView({ children, state }: ExecutionViewProps) {
         </li>
         <li>
           <strong>The harness translates</strong>
-          <span>Each model or tool operation becomes an independently retryable task.</span>
+          <span>Model requests and supported tool calls become independently retryable tasks.</span>
         </li>
         <li>
           <strong>Render Workflows executes</strong>
@@ -101,7 +103,7 @@ export function ExecutionView({ children, state }: ExecutionViewProps) {
       </ol>
 
       <div className="execution-stats">
-        <div><strong>{branches}</strong><span>research branches</span></div>
+        <div><strong>{subAgentCalls}</strong><span>sub-agent model calls</span></div>
         <div><strong>{modelCalls}</strong><span>model calls</span></div>
         <div><strong>{searches}</strong><span>web searches</span></div>
         <div><strong>{fetches}</strong><span>source fetches</span></div>

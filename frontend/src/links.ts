@@ -2,8 +2,8 @@ const repositoryUrl =
   "https://github.com/ojusave/pydantic-render-workflows-validation";
 
 export const links = {
-  deploy: `https://render.com/deploy?repo=${encodeURIComponent(repositoryUrl)}`,
-  github: repositoryUrl,
+  deploy: `https://render.com/deploy?repo=${encodeURIComponent(`${repositoryUrl}/tree/pydantic-ai-v2`)}`,
+  github: `${repositoryUrl}/tree/pydantic-ai-v2`,
   workflowsDocs: "https://render.com/docs/workflows",
   signup: renderSignupUrlWithUtms(),
 };

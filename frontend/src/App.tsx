@@ -131,8 +131,8 @@ export default function App() {
           <h1>Watch an AI researcher fan out across Render tasks</h1>
           <p>
             Pydantic AI decides how to research your question. Its harness turns
-            every model call, delegated branch, search, and source fetch into a
-            Render Workflow task you can watch below.
+            model calls, web searches, and source fetches into separate Render
+            tasks. Delegated researchers use the same integration for their work.
           </p>
         </section>
 
@@ -177,6 +177,7 @@ export default function App() {
                 <Textarea
                   id="prompt"
                   rows={5}
+                  maxLength={8000}
                   value={prompt}
                   onChange={(event) => setPrompt(event.target.value)}
                   placeholder="What are the tradeoffs of running long-lived AI research agents as distributed background tasks?"

@@ -14,7 +14,7 @@ import asyncpg
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart, ToolReturnPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
-from pydantic_ai_harness import RenderWorkflows
+from pydantic_ai_harness import RenderWorkflows, SubAgent, SubAgents
 from pydantic_ai_harness.memory import Memory, PostgresMemoryStore
 from render import Options, Retry, TaskContext
 from typing_extensions import TypedDict
@@ -111,6 +111,35 @@ async def run_validation(ctx: TaskContext, case: str, token: str) -> dict:
         # repeats the agent, so the database must record the repeated tool call.
         os._exit(17)
     return {"root_attempt": attempt, "root_process": os.getpid(), "tool": json.loads(result.output)}
+
+
+def nested_model(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+    del info
+    returns = [p for m in messages for p in m.parts if isinstance(p, ToolReturnPart)]
+    if returns:
+        return ModelResponse(parts=[TextPart(str(returns[-1].content))])
+    return ModelResponse(
+        parts=[ToolCallPart("delegate_task", {"agent_name": "validation", "task": "Run the probe"})]
+    )
+
+
+nested_runtime = RenderWorkflows(app, name="nested_validation", deps_type=ProbeDeps)
+nested_agent = Agent(
+    FunctionModel(nested_model),
+    name="nested_validation",
+    deps_type=ProbeDeps,
+    capabilities=[SubAgents(agents=[SubAgent(probe_agent)], agent_folders=None), nested_runtime],
+)
+
+
+@nested_runtime.task(name="run_nested", timeout_seconds=300)
+async def run_nested(ctx: TaskContext, token: str) -> dict:
+    del ctx
+    UUID(token)
+    result = await nested_agent.run(
+        "Delegate the probe", deps={"token": token, "case": "nested", "limit": 64}
+    )
+    return {"answer": json.loads(result.output)}
 
 
 class LimitedMemory(Memory[ProbeDeps]):

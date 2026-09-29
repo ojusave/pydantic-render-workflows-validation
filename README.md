@@ -12,8 +12,8 @@ Install Python 3.12, uv, Node 22 or later, pnpm 10.32.1, and [Render CLI](https:
 git clone --branch pydantic-ai-v2 https://github.com/ojusave/pydantic-render-workflows-validation.git
 cd pydantic-render-workflows-validation
 uv sync --frozen
-corepack pnpm --dir frontend install --frozen-lockfile
-corepack pnpm --dir frontend build
+(cd frontend && corepack pnpm install --frozen-lockfile)
+(cd frontend && corepack pnpm build)
 render workflows dev -- uv run python app.py
 ```
 
@@ -49,7 +49,7 @@ The database stores synthetic Memory and retry-test records. Research prompts an
 ```bash
 uv run pytest
 uv run ruff check .
-corepack pnpm --dir frontend build
+(cd frontend && corepack pnpm build)
 render blueprints validate render.yaml
 ```
 
@@ -57,10 +57,19 @@ The ordinary test suite needs no provider key. Hosted validation uses real Rende
 
 | Task | What it checks |
 | --- | --- |
+| `run_nested` | A parent delegates to another Pydantic agent, whose model and tool calls execute as Render tasks. |
 | `run_validation`, case `retry` | A tool fails once and succeeds on its registered retry while the root stays on its first attempt. |
 | `run_validation`, case `interrupt` | The root process exits after a completed tool call, then retries and repeats that work. |
 | `run_validation`, case `cancel` | A long-running child allows native root cancellation to be checked. |
 | `run_memory` | Separate runs write and read shared PostgreSQL Memory with per-run character limits. |
 | `cleanup_validation` | Removes one probe's Memory files and attempt counters by its UUID. |
+
+Run the hosted probes from a terminal with `RENDER_API_KEY` and `WORKFLOW_SLUG` set:
+
+```bash
+uv run python verify_hosted.py
+```
+
+The script checks actual task attempts and descendant states, then removes its synthetic Memory files and attempt counters. Render retains task history, and Memory retains its operation receipts. The script prints run IDs and results for review.
 
 All Pydantic packages are pinned to the same Git revision in `pyproject.toml` and `uv.lock`. The validation revision combines the Render adapter with the separately reviewed Memory fix; neither upstream PR needs to include this example's deployment code. See [integration ownership](docs/integration-ownership.md) for the boundaries and [Render's Python SDK reference](https://render.com/docs/workflows-sdk-python) for task configuration.
