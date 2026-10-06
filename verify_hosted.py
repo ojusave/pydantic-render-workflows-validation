@@ -78,6 +78,16 @@ async def main():
             "validation__function_toolset__<agent>.call_tool",
         } <= names, item
 
+        token = str(uuid4())
+        effects = await wait(await start("run_effects", {"token": token}))
+        item = await record("usage_and_events", effects)
+        assert str(effects.status) in {"completed", "succeeded"}, item
+        assert effects.results[0]["requests"] == 3, item
+        assert effects.results[0]["events"] == [
+            {"token": token, "sequence": 1},
+            {"token": token, "sequence": 2},
+        ], item
+
         for case in ("retry", "interrupt"):
             token = str(uuid4())
             tokens.append(token)
@@ -108,7 +118,7 @@ async def main():
         ]
         for limit, run_id in zip((4, 8), read_ids):
             read = await wait(run_id)
-            item = await record(f"memory_limit_{limit}", read)
+            item = await record(f"memory_configured_limit_{limit}", read)
             assert str(read.status) in {"completed", "succeeded"}, item
             assert read.results[0]["answer"].startswith("abcdefghij"[:limit] + "\n\n[Truncated:"), (
                 item

@@ -1216,8 +1216,8 @@ wheels = [
 
 [[package]]
 name = "pydantic-ai-harness"
-version = "0.0.1.dev3672+121c8854"
-source = { git = "https://github.com/ojusave/pydantic-ai.git?subdirectory=src%2Fpydantic_ai_harness&rev=121c8854e538ba835fffd96999d1fbd5f562fe73#121c8854e538ba835fffd96999d1fbd5f562fe73" }
+version = "0.0.1.dev3986+e8f3f2d4"
+source = { git = "https://github.com/ojusave/pydantic-ai.git?subdirectory=src%2Fpydantic_ai_harness&rev=e8f3f2d40fa75eff31a5ddabd48d8f377163b540#e8f3f2d40fa75eff31a5ddabd48d8f377163b540" }
 dependencies = [
     { name = "genai-prices" },
     { name = "httpx" },
@@ -1232,8 +1232,8 @@ render = [
 
 [[package]]
 name = "pydantic-ai-slim"
-version = "0.0.1.dev3672+121c8854"
-source = { git = "https://github.com/ojusave/pydantic-ai.git?subdirectory=pydantic_ai_slim&rev=121c8854e538ba835fffd96999d1fbd5f562fe73#121c8854e538ba835fffd96999d1fbd5f562fe73" }
+version = "0.0.1.dev3986+e8f3f2d4"
+source = { git = "https://github.com/ojusave/pydantic-ai.git?subdirectory=pydantic_ai_slim&rev=e8f3f2d40fa75eff31a5ddabd48d8f377163b540#e8f3f2d40fa75eff31a5ddabd48d8f377163b540" }
 dependencies = [
     { name = "anyio" },
     { name = "genai-prices" },
@@ -1334,8 +1334,8 @@ wheels = [
 
 [[package]]
 name = "pydantic-graph"
-version = "0.0.1.dev3672+121c8854"
-source = { git = "https://github.com/ojusave/pydantic-ai.git?subdirectory=pydantic_graph&rev=121c8854e538ba835fffd96999d1fbd5f562fe73#121c8854e538ba835fffd96999d1fbd5f562fe73" }
+version = "0.0.1.dev3986+e8f3f2d4"
+source = { git = "https://github.com/ojusave/pydantic-ai.git?subdirectory=pydantic_graph&rev=e8f3f2d40fa75eff31a5ddabd48d8f377163b540#e8f3f2d40fa75eff31a5ddabd48d8f377163b540" }
 dependencies = [
     { name = "anyio" },
     { name = "logfire-api" },
@@ -1367,8 +1367,8 @@ dev = [
 requires-dist = [
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "fastapi", specifier = ">=0.116.0" },
-    { name = "pydantic-ai-harness", extras = ["render"], git = "https://github.com/ojusave/pydantic-ai.git?subdirectory=src%2Fpydantic_ai_harness&rev=121c8854e538ba835fffd96999d1fbd5f562fe73" },
-    { name = "pydantic-ai-slim", extras = ["openai", "duckduckgo", "web-fetch"], git = "https://github.com/ojusave/pydantic-ai.git?subdirectory=pydantic_ai_slim&rev=121c8854e538ba835fffd96999d1fbd5f562fe73" },
+    { name = "pydantic-ai-harness", extras = ["render"], git = "https://github.com/ojusave/pydantic-ai.git?subdirectory=src%2Fpydantic_ai_harness&rev=e8f3f2d40fa75eff31a5ddabd48d8f377163b540" },
+    { name = "pydantic-ai-slim", extras = ["openai", "duckduckgo", "web-fetch"], git = "https://github.com/ojusave/pydantic-ai.git?subdirectory=pydantic_ai_slim&rev=e8f3f2d40fa75eff31a5ddabd48d8f377163b540" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.35.0" },
 ]
 

@@ -61,7 +61,8 @@ The ordinary test suite needs no provider key. Hosted validation uses real Rende
 | `run_validation`, case `retry` | A tool fails once and succeeds on its registered retry while the root stays on its first attempt. |
 | `run_validation`, case `interrupt` | The root process exits after a completed tool call, then retries and repeats that work. |
 | `run_validation`, case `cancel` | A long-running child allows native root cancellation to be checked. |
-| `run_memory` | Separate runs write and read shared PostgreSQL Memory with per-run character limits. |
+| `run_memory` | Separate runs write and read shared PostgreSQL Memory with separately configured character limits. |
+| `run_effects` | Checks nested model usage and ordered tool events across workers. |
 | `cleanup_validation` | Removes one probe's Memory files and attempt counters by its UUID. |
 
 Run the hosted probes from a terminal with `RENDER_API_KEY` and `WORKFLOW_SLUG` set:
@@ -72,6 +73,6 @@ uv run python verify_hosted.py
 
 The script checks actual task attempts and descendant states, then removes its synthetic Memory files and attempt counters. Render retains task history, and Memory retains its operation receipts. The script prints run IDs and results for review.
 
-All Pydantic packages are pinned to the same Git revision in `pyproject.toml` and `uv.lock`. The validation revision combines the Render adapter with the separately reviewed Memory fix; neither upstream PR needs to include this example's deployment code. See [integration ownership](docs/integration-ownership.md) for the boundaries and [Render's Python SDK reference](https://render.com/docs/workflows-sdk-python) for task configuration.
+All Pydantic packages are pinned to the same Git revision in `pyproject.toml` and `uv.lock`. The validation revision uses the Render adapter on current upstream Memory, with no separate Memory patch; neither upstream PR needs to include this example's deployment code. See [integration ownership](docs/integration-ownership.md) for the boundaries and [Render's Python SDK reference](https://render.com/docs/workflows-sdk-python) for task configuration.
 
 [Hosted validation results](docs/hosted-validation.md) record the tested revisions, task run IDs, and remaining verification.

@@ -8,18 +8,21 @@ import asyncio
 import json
 import os
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from uuid import UUID
 
 import asyncpg
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, CustomEvent, RunContext
+from pydantic_ai.capabilities import Hooks
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart, ToolReturnPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_ai.models.test import TestModel
 from pydantic_ai_harness import RenderWorkflows, SubAgent, SubAgents
 from pydantic_ai_harness.memory import Memory, PostgresMemoryStore
 from render import Options, Retry, TaskContext
 from typing_extensions import TypedDict
 
-from app import app
+from app import app, resolve_tool_options
 
 
 class ProbeDeps(TypedDict):
@@ -123,7 +126,9 @@ def nested_model(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse
     )
 
 
-nested_runtime = RenderWorkflows(app, name="nested_validation", deps_type=ProbeDeps)
+nested_runtime = RenderWorkflows(
+    app, name="nested_validation", deps_type=ProbeDeps, resolve_tool_options=resolve_tool_options
+)
 nested_agent = Agent(
     FunctionModel(nested_model),
     name="nested_validation",
@@ -142,13 +147,6 @@ async def run_nested(ctx: TaskContext, token: str) -> dict:
     return {"answer": json.loads(result.output)}
 
 
-class LimitedMemory(Memory[ProbeDeps]):
-    async def for_run(self, ctx: RunContext[ProbeDeps]) -> Memory[ProbeDeps]:
-        clone = await super().for_run(ctx)
-        clone.max_memory_size = ctx.deps["limit"]
-        return clone
-
-
 def memory_model(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
     del info
     returns = [p for m in messages for p in m.parts if isinstance(p, ToolReturnPart)]
@@ -161,29 +159,87 @@ def memory_model(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse
     return ModelResponse(parts=[ToolCallPart("read_memory", {"file": "MEMORY.md"})])
 
 
-memory_runtime = RenderWorkflows(app, name="memory_validation", deps_type=ProbeDeps)
-memory_capability = LimitedMemory(
-    store=memory_store, namespace=lambda ctx: ctx.deps["token"], inject_memory=False
-)
-memory_agent = Agent(
-    FunctionModel(memory_model),
-    name="memory_validation",
-    deps_type=ProbeDeps,
-    capabilities=[
-        memory_capability,
-        memory_runtime,
-    ],
-)
+def build_memory_agent(limit: int):
+    runtime = RenderWorkflows(app, name=f"memory_validation_{limit}", deps_type=ProbeDeps)
+    capability = Memory[ProbeDeps](
+        store=memory_store,
+        namespace=lambda ctx: ctx.deps["token"],
+        inject_memory=False,
+        max_memory_size=limit,
+    )
+    agent = Agent(
+        FunctionModel(memory_model),
+        name=f"memory_validation_{limit}",
+        deps_type=ProbeDeps,
+        capabilities=[capability, runtime],
+    )
+    return agent, runtime, capability
 
 
-@memory_runtime.task(name="run_memory", timeout_seconds=300)
+memory_agents = {limit: build_memory_agent(limit) for limit in (4, 8, 64)}
+
+
+@memory_agents[64][1].task(name="run_memory", timeout_seconds=300)
 async def run_memory(ctx: TaskContext, token: str, mode: str, limit: int = 64) -> dict:
-    del ctx
     UUID(token)
     if mode not in {"write", "read"} or limit not in {4, 8, 64}:
         raise ValueError("Expected write/read mode and limit 4, 8, or 64")
-    result = await memory_agent.run(mode, deps={"token": token, "case": mode, "limit": limit})
+    agent, runtime, _ = memory_agents[limit]
+    with runtime.activate(ctx):
+        result = await agent.run(mode, deps={"token": token, "case": mode, "limit": limit})
     return {"answer": result.output, "root_process": os.getpid(), "limit": limit}
+
+
+@dataclass(kw_only=True)
+class ProbeEvent(CustomEvent, name="validation.effect"):
+    token: str
+    sequence: int
+
+
+seen_events: list[ProbeEvent] = []
+effect_hooks = Hooks[ProbeDeps]()
+
+
+@effect_hooks.on.event(ProbeEvent)
+async def record_effect(ctx: RunContext[ProbeDeps], event: ProbeEvent) -> None:
+    seen_events.append(event)
+
+
+effect_child = Agent(
+    TestModel(call_tools=[], custom_output_text="child completed"), name="effect-child"
+)
+effect_runtime = RenderWorkflows(app, name="effect_validation", deps_type=ProbeDeps)
+effect_agent = Agent(
+    TestModel(call_tools=["child_work"]),
+    name="effect-parent",
+    deps_type=ProbeDeps,
+    capabilities=[effect_hooks, effect_runtime],
+)
+
+
+@effect_agent.tool
+async def child_work(ctx: RunContext[ProbeDeps]) -> dict:
+    output = await effect_child.run("child", usage=ctx.usage)
+    await ctx.emit(ProbeEvent(token=ctx.deps["token"], sequence=1))
+    await ctx.emit(ProbeEvent(token=ctx.deps["token"], sequence=2))
+    return {"answer": output.output, "worker_process": os.getpid()}
+
+
+@effect_runtime.task(name="run_effects", timeout_seconds=300)
+async def run_effects(ctx: TaskContext, token: str) -> dict:
+    UUID(token)
+    seen_events.clear()
+    result = await effect_agent.run(
+        "run child", deps={"token": token, "case": "effects", "limit": 64}
+    )
+    return {
+        "requests": result.usage.requests,
+        "input_tokens": result.usage.input_tokens,
+        "output_tokens": result.usage.output_tokens,
+        "events": [{"token": event.token, "sequence": event.sequence} for event in seen_events],
+        "root_process": os.getpid(),
+        "answer": result.output,
+    }
 
 
 @app.task(name="cleanup_validation", timeout_seconds=60)

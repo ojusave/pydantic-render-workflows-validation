@@ -71,11 +71,18 @@ TOOL_OPTIONS = Options(
 
 
 app = Workflows()
+
+
+def resolve_tool_options(_operation, _tool, name):
+    return False if name in {"delegate_task", "read_tool_result"} else None
+
+
 render_workflows = RenderWorkflows(
     app,
     name="researcher",
     model_options=MODEL_OPTIONS,
     tool_options=TOOL_OPTIONS,
+    resolve_tool_options=resolve_tool_options,
 )
 
 # The delegate carries its own capability on the same app, so its model
@@ -87,6 +94,7 @@ sub_render_workflows = RenderWorkflows(
     name="sub_researcher",
     model_options=MODEL_OPTIONS,
     tool_options=TOOL_OPTIONS,
+    resolve_tool_options=resolve_tool_options,
 )
 
 sub_researcher = SubAgent(
