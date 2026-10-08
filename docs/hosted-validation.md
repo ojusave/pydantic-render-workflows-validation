@@ -1,4 +1,25 @@
-# Hosted validation, 6 October 2026
+# Hosted validation
+
+## 8 October 2026: current Render PR head
+
+The `samples` workflow version `wfv-db42j3flot8c73cg92r0` and web deployment `dep-db42j36b7d7c73a4nq00` built [example commit `e3a693c`](https://github.com/ojusave/pydantic-render-workflows-validation/commit/e3a693c664a62ef1b27ac0a116bd0999d5ccc54f). Its three Pydantic packages are pinned to [Render PR head `b25a8428`](https://github.com/ojusave/pydantic-ai/commit/b25a84283914c3462250918152313ff408ed0a1f). The web health endpoint returned HTTP 200.
+
+Eight deterministic checks passed on that hosted version:
+
+| Check | Root task run | Result |
+| --- | --- | --- |
+| Nested agents | `trn-08l4gdb42m6nif34c73e7d110` | Completed and returned the input token |
+| Child usage and events | `trn-08l4gdb42mbnh6rpg00bhmug0` | Three model requests and two ordered events |
+| Tool retry | `trn-08l4gdb42mfnh6rpg00bhmugg` | Tool succeeded on attempt two without restarting the root |
+| Root interruption | `trn-08l4gdb42mjputons738p5q1g` | Root and tool each ran twice |
+| Memory write | `trn-08l4gdb42mshutons738p5q20` | Wrote ten characters |
+| Memory read, limit four | `trn-08l4gdb42n1nif34c73e7d13g` | Returned four characters and a truncation notice |
+| Memory read, limit eight | `trn-08l4gdb42n5gm3shc73b8pud0` | Returned eight characters and a truncation notice |
+| Root cancellation | `trn-08l4gdb42la7ntkc000fnfvkg` | Root reached canceled state |
+
+All six data-cleanup runs completed. The CLI check did not independently inspect the canceled root's child state, and it did not run a real model-provider request on this revision. Local checks on the same pin passed: 29 example tests and Ruff. On the PR head, the Render test directory passed 148 tests with three process tests skipped in that command; the three real local Render process tests passed separately before the final CI-only edits. The Harness CI jobs passed on Python 3.11 through 3.14, as did quality checks. The PR remains blocked by the repository's protected `.github/` rule and a missing `pkg:harness` label, both of which require maintainer action.
+
+## 6 October 2026
 
 All eight hosted checks passed in the `samples` workspace against [integration revision `0f7e20e39`](https://github.com/ojusave/pydantic-ai/commit/0f7e20e39299b06bacb6c5e930d3c64b975796b2), using [example revision `df50c45`](https://github.com/ojusave/pydantic-render-workflows-validation/commit/df50c45a5951402e3025388b126e2cd447644456). The integration uses unchanged upstream core and Memory, with no separate Memory patch.
 
