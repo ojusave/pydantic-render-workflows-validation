@@ -27,6 +27,6 @@ line-length = 100
 target-version = "py312"
 
 [tool.uv.sources]
-pydantic-ai-harness = { git = "https://github.com/ojusave/pydantic-ai.git", rev = "af9f3a40ca309a8a32c5ebc4707b6c093aed96ac", subdirectory = "src/pydantic_ai_harness" }
-pydantic-ai-slim = { git = "https://github.com/ojusave/pydantic-ai.git", rev = "af9f3a40ca309a8a32c5ebc4707b6c093aed96ac", subdirectory = "pydantic_ai_slim" }
-pydantic-graph = { git = "https://github.com/ojusave/pydantic-ai.git", rev = "af9f3a40ca309a8a32c5ebc4707b6c093aed96ac", subdirectory = "pydantic_graph" }
+pydantic-ai-harness = { git = "https://github.com/ojusave/pydantic-ai.git", rev = "d166e8861ea42aba2e46b87e66829c4209d28a76", subdirectory = "src/pydantic_ai_harness" }
+pydantic-ai-slim = { git = "https://github.com/ojusave/pydantic-ai.git", rev = "d166e8861ea42aba2e46b87e66829c4209d28a76", subdirectory = "pydantic_ai_slim" }
+pydantic-graph = { git = "https://github.com/ojusave/pydantic-ai.git", rev = "d166e8861ea42aba2e46b87e66829c4209d28a76", subdirectory = "pydantic_graph" }
