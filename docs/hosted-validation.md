@@ -2,22 +2,22 @@
 
 ## 8 October 2026: current Render PR head
 
-The `samples` workflow version `wfv-db42j3flot8c73cg92r0` and web deployment `dep-db42j36b7d7c73a4nq00` built [example commit `e3a693c`](https://github.com/ojusave/pydantic-render-workflows-validation/commit/e3a693c664a62ef1b27ac0a116bd0999d5ccc54f). Its three Pydantic packages are pinned to [Render PR head `b25a8428`](https://github.com/ojusave/pydantic-ai/commit/b25a84283914c3462250918152313ff408ed0a1f). The web health endpoint returned HTTP 200.
+The `samples` workflow version `wfv-db42sbajnfac73bb3ue0` and web deployment `dep-db42sbnlot8c73ch651g` built [example commit `3af4fb8`](https://github.com/ojusave/pydantic-render-workflows-validation/commit/3af4fb8b3a4d9cfe40ea752b38f6e948ebeed2a9). Its three Pydantic packages are pinned to [Render PR head `b58b68b6`](https://github.com/ojusave/pydantic-ai/commit/b58b68b69ce3133461dffbf812dc10c0f5b52e1b). The web health endpoint returned HTTP 200.
 
 Eight deterministic checks passed on that hosted version:
 
 | Check | Root task run | Result |
 | --- | --- | --- |
-| Nested agents | `trn-08l4gdb42m6nif34c73e7d110` | Completed and returned the input token |
-| Child usage and events | `trn-08l4gdb42mbnh6rpg00bhmug0` | Three model requests and two ordered events |
-| Tool retry | `trn-08l4gdb42mfnh6rpg00bhmugg` | Tool succeeded on attempt two without restarting the root |
-| Root interruption | `trn-08l4gdb42mjputons738p5q1g` | Root and tool each ran twice |
-| Memory write | `trn-08l4gdb42mshutons738p5q20` | Wrote ten characters |
-| Memory read, limit four | `trn-08l4gdb42n1nif34c73e7d13g` | Returned four characters and a truncation notice |
-| Memory read, limit eight | `trn-08l4gdb42n5gm3shc73b8pud0` | Returned eight characters and a truncation notice |
-| Root cancellation | `trn-08l4gdb42la7ntkc000fnfvkg` | Root reached canceled state |
+| Nested agents | `trn-08l4gdb43crhkjpkg00eqd4ig` | Completed and returned the input token |
+| Child usage and events | `trn-08l4gdb43d0hutons738p5rl0` | Three model requests and two ordered events |
+| Tool retry | `trn-08l4gdb43d4gm3shc73b8pvs0` | Tool succeeded on attempt two without restarting the root |
+| Root interruption | `trn-08l4gdb43d8pkjpkg00eqd4m0` | Root and tool each ran twice |
+| Memory write | `trn-08l4gdb43dhnntkc000fng1dg` | Wrote ten characters |
+| Memory read, limit four | `trn-08l4gdb43dn7ntkc000fng1e0` | Returned four characters and a truncation notice |
+| Memory read, limit eight | `trn-08l4gdb43dr7ntkc000fng1fg` | Returned eight characters and a truncation notice |
+| Root cancellation | `trn-08l4gdb43du1utons738p5ru0` | Root reached canceled state |
 
-All six data-cleanup runs completed. The CLI check did not independently inspect the canceled root's child state, and it did not run a real model-provider request on this revision. Local checks on the same pin passed: 29 example tests and Ruff. On the PR head, the Render test directory passed 148 tests with three process tests skipped in that command; the three real local Render process tests passed separately before the final CI-only edits. The Harness CI jobs passed on Python 3.11 through 3.14, as did quality checks. The PR remains blocked by the repository's protected `.github/` rule and a missing `pkg:harness` label, both of which require maintainer action.
+All six data-cleanup runs completed. The CLI check did not independently inspect the canceled root's child state, and it did not run a real model-provider request on this revision. Local checks on the same pin passed: 29 example tests and Ruff. On the PR head, the Render test directory passed 156 tests with three process tests skipped in that command; the three real local Render process tests passed separately. The Harness CI jobs passed on Python 3.11 through 3.14, as did quality and combined coverage checks. The PR remains blocked by the repository's protected `.github/` rule and a missing `pkg:harness` label, both of which require maintainer action.
 
 ## 6 October 2026
 
